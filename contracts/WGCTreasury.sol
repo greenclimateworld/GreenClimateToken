@@ -43,7 +43,7 @@ contract WGCTreasury is Initializable, AccessControlUpgradeable {
         exponentation = Exponentation(_addr);
     }
 
-    function depositReward(uint256 amount) external {
+    function depositReward(uint256 amount) external returns (uint256){
         uint256 balanceBefore = wgc.balanceOf(address(this));
         wgc.safeTransferFrom(msg.sender, address(this), amount);
         uint256 _tBalanceAdded = wgc.balanceOf(address(this)).sub(
@@ -57,6 +57,7 @@ contract WGCTreasury is Initializable, AccessControlUpgradeable {
                 rewardHistory[block.number]
             );
         }
+        return _tBalanceAdded;
     }
 
     function setTokenAddress(address _token) public onlyRole(GOVERNOR_ROLE) {
@@ -84,10 +85,13 @@ contract WGCTreasury is Initializable, AccessControlUpgradeable {
             _stakingRewardPercentPerBlock <= 1000000,
             "staking reward percentage < 1%"
         );
-        stakingRewardBlocksSet.push(_blockNumber);
+        require(_blockNumber>=stakingRewardBlocksSet[stakingRewardBlocksSet.length-1], "should be later block");
         stakingRewardPercentPerBlock[
-            _blockNumber
-        ] = _stakingRewardPercentPerBlock;
+                _blockNumber
+            ] = _stakingRewardPercentPerBlock;
+        if(_blockNumber>stakingRewardBlocksSet[stakingRewardBlocksSet.length-1]){
+            stakingRewardBlocksSet.push(_blockNumber);            
+        }
         emit SetStakingRewardPercent(
             _blockNumber,
             _stakingRewardPercentPerBlock
@@ -103,15 +107,16 @@ contract WGCTreasury is Initializable, AccessControlUpgradeable {
         for (uint256 i = stakingRewardBlocksSet.length; i > 0; --i) {
             if (stakingRewardBlocksSet[i-1] < stakingRewardLastBlock) {
                 if (i == stakingRewardBlocksSet.length) {
-                    blockCount = block.number - stakingRewardLastBlock;
+                    blockCount = block.number.sub(stakingRewardLastBlock);
                 } else {
                     blockCount =
-                        stakingRewardBlocksSet[i] -
-                        stakingRewardLastBlock;
+                        stakingRewardBlocksSet[i].sub(stakingRewardLastBlock);
                 }
                 if (
                     stakingRewardPercentPerBlock[stakingRewardBlocksSet[i-1]] == 0
                 ) break;
+                if(blockCount==0)
+                    break;
                 times = exponentation
                     .power(
                         (100000000+stakingRewardPercentPerBlock[stakingRewardBlocksSet[i-1]]),
@@ -125,17 +130,18 @@ contract WGCTreasury is Initializable, AccessControlUpgradeable {
                     10000000000
                 );
                 break;
-            }
+            }      
             if(stakingRewardBlocksSet[i-1]>=block.number)
                 continue;
             if (i == stakingRewardBlocksSet.length) {
-                blockCount = block.number - stakingRewardBlocksSet[i-1];
+                blockCount = block.number.sub(stakingRewardBlocksSet[i-1]);
             } else {
                 blockCount =
-                    stakingRewardBlocksSet[i] -
-                    stakingRewardBlocksSet[i-1];
+                    stakingRewardBlocksSet[i].sub(stakingRewardBlocksSet[i-1]);
             }
             if (stakingRewardPercentPerBlock[stakingRewardBlocksSet[i-1]] == 0)
+                continue;
+            if(blockCount==0)
                 continue;
             times = exponentation
                 .power(

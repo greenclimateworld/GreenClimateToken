@@ -53,7 +53,7 @@ async function main() {
                 0, // transfer planting fund fee  =3%  
                 1000000000 //total supply
             ],
-            "Green Climate World", //name
+            "Green Climate Coin", //name
             "WGC", //symbol
             9 // decimals
         ], { initializer: 'initialize' });
@@ -65,7 +65,7 @@ async function main() {
         console.log('Deploying sWGC');
 
         const stoken = await upgrades.deployProxy(sWGC, [
-            "Staked Green Climate Token",
+            "Staked Green Climate Coin",
             "sWGC",
             staking.address, //staking contract
             1000000000, //total supply = wgc token
